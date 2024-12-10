@@ -1,124 +1,129 @@
 import random
-dots_area_arr = [['.','.','.','.','.','.','.'], ['.','.','.','.','.','.','.'],['.','.','.','.','.','.','.'],['.','.','.','.','.','.','.'],['.','.','.','.','.','.','.'],['.','.','.','.','.','.','.'],['.','.','.','.','.','.','.']]
-ships_coordinate = []
-blocked_coordinate = []
-def printBoard(arr):
-    print("   " + "  ".join(str(i + 1) for i in range(len(arr[0]))))
-    for i, row in enumerate(arr): print(chr(ord('A') + i) + "  " + "  ".join(row))
+import os
 
-def shipNotBlockChecker(shipCoodinate):
-    if(len(blocked_coordinate) != 0):
-        for i in blocked_coordinate:
-            if(shipCoodinate == i): 
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
+def create_board(size=7):
+    return [[" " for _ in range(size)] for _ in range(size)]
+
+def display_board(board, reveal=False):
+    print("  " + " ".join("ABCDEFG"[i] for i in range(len(board))))
+    for i, row in enumerate(board):
+        print(f"{i+1} " + " ".join(cell if reveal or cell in ("M", "H", "X") else "." for cell in row))
+
+def place_ships(board):
+    for size in [3, 2, 2, 1, 1, 1, 1]:
+        while True:
+            orientation = random.choice(["H", "V"])
+            row, col = random.randint(0, 6), random.randint(0, 6)
+            if can_place_ship(board, row, col, size, orientation):
+                for i in range(size):
+                    if orientation == "H":
+                        board[row][col + i] = "S"
+                    else:
+                        board[row + i][col] = "S"
+                break
+
+def can_place_ship(board, row, col, size, orientation):
+    for i in range(size):
+        r, c = (row, col + i) if orientation == "H" else (row + i, col)
+        if not (0 <= r < 7 and 0 <= c < 7) or board[r][c] != " ":
+            return False
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                if 0 <= r + dr < 7 and 0 <= c + dc < 7 and board[r + dr][c + dc] == "S":
+                    return False
+    return True
+
+def process_shot(board, player_board, row, col):
+    if board[row][col] == "S":
+        board[row][col] = player_board[row][col] = "H"
+        if is_ship_sunk(board, row, col):
+            mark_sunk_ship(board, player_board, row, col)
+            return "victory" if all_ships_sunk(board) else "sunk"
+        return "hit"
+    elif board[row][col] == " ":
+        board[row][col] = player_board[row][col] = "M"
+        return "miss"
+    return "already"
+
+def is_ship_sunk(board, row, col):
+    stack = [(row, col)]
+    visited = set()
+    while stack:
+        r, c = stack.pop()
+        if (r, c) in visited or board[r][c] != "H":
+            continue
+        visited.add((r, c))
+        for dr, dc in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < 7 and 0 <= nc < 7:
+                stack.append((nr, nc))
+    for r, c in visited:
+        for dr, dc in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+            nr, nc = r + dr, c + dc
+            if 0 <= nr < 7 and 0 <= nc < 7 and board[nr][nc] == "S":
                 return False
-            else: 
-                return True
-    else: 
-        return True
+    return True
 
-def coordinateBlocker(coordinate):
-    for i in coordinate:
-        blocked_coordinate.append(i)
-        if(i == 1):
-            blocked_coordinate.append(2)
-            blocked_coordinate.append(8)
-            blocked_coordinate.append(9)
-        elif(i == 7):
-            blocked_coordinate.append(6)
-            blocked_coordinate.append(13)
-            blocked_coordinate.append(14)
-        elif(i == 43):
-            blocked_coordinate(36)
-            blocked_coordinate(37)
-            blocked_coordinate(44)
-        elif(i == 49):
-            blocked_coordinate(42)
-            blocked_coordinate(48)
-            blocked_coordinate(49)
-        elif(1 < i < 7):
-            blocked_coordinate.append(i - 1)
-            blocked_coordinate.append(i + 1)
-            blocked_coordinate.append(i + 7)
-            blocked_coordinate.append(i + 6)
-            blocked_coordinate.append(i + 8)
-        elif( 43 < i < 49):
-            blocked_coordinate.append(i + 1)
-            blocked_coordinate.append(i - 1)
-            blocked_coordinate.append(i - 6)
-            blocked_coordinate.append(i - 7)
-            blocked_coordinate.append(i - 8)
-        elif(i % 7 == 0):
-            blocked_coordinate.append(i - 1)
-            blocked_coordinate.append(i - 7)
-            blocked_coordinate.append(i + 7)
-            blocked_coordinate.append(i + 6)
-            blocked_coordinate.append(i - 8)
-        elif((i + 1) % 7 == 0):
-            blocked_coordinate.append(i + 1)
-            blocked_coordinate.append(i + 7)
-            blocked_coordinate.append(i - 7)
-            blocked_coordinate.append(i - 6)
-            blocked_coordinate.append(i + 8)
-        else: 
-            blocked_coordinate.append(i + 1)
-            blocked_coordinate.append(i - 1)
-            blocked_coordinate.append(i + 6)
-            blocked_coordinate.append(i - 6)
-            blocked_coordinate.append(i + 7)
-            blocked_coordinate.append(i - 7)
-            blocked_coordinate.append(i + 8)
-            blocked_coordinate.append(i - 8)
+def mark_sunk_ship(board, player_board, row, col):
+    stack = [(row, col)]
+    while stack:
+        r, c = stack.pop()
+        if board[r][c] == "H":
+            board[r][c] = player_board[r][c] = "X"
+            for dr, dc in ((0, 1), (1, 0), (0, -1), (-1, 0)):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < 7 and 0 <= nc < 7:
+                    stack.append((nr, nc))
 
-def dispatcher(arr):
-    for i in arr:
-        ships_coordinate.append(i)
-    coordinateBlocker(arr)
-    # print(blocked_coordinate)
+def all_ships_sunk(board):
+    return not any("S" in row for row in board)
 
-def ThreeShipsPlacer():
-    firstRandom = random.randint(1, 49)
-    shipArr = []
-    if(firstRandom % 7 != 0 and (firstRandom - 1) % 7 != 0 and firstRandom != 1):
-        shipArr.append(firstRandom)
-        shipArr.append(firstRandom + 1)
-        shipArr.append(firstRandom - 1)
-        dispatcher(shipArr)
-    elif (7 < firstRandom < 43):
-        shipArr.append(firstRandom)
-        shipArr.append(firstRandom - 7)
-        shipArr.append(firstRandom + 7)
-        dispatcher(shipArr)
-    else:
-        ThreeShipsPlacer()
+def parse_coordinates(coords):
+    return "ABCDEFG".index(coords[0].upper()), int(coords[1]) - 1
 
-def TwoShipsPlacer():
-    firstRandom = random.randint(1, 49)
-    shipArr = []
-    if(shipNotBlockChecker(firstRandom)):
-        if(firstRandom % 7 != 0 and shipNotBlockChecker(firstRandom + 1)):
-            shipArr.append(firstRandom)
-            shipArr.append(firstRandom + 1)
-            dispatcher(shipArr)
-        elif(firstRandom < 43 and shipNotBlockChecker(firstRandom + 7)):
-            shipArr.append(firstRandom)
-            shipArr.append(firstRandom + 7)
-            dispatcher(shipArr)
-        else:
-            TwoShipsPlacer()
-    else:
-        TwoShipsPlacer()
+def play_game(player_name, leaderboard):
+    board, player_board = create_board(), create_board()
+    place_ships(board)
+    shots = 0
+    while True:
+        clear_screen()
+        print(f"Игрок: {player_name} | Выстрелы: {shots}")
+        display_board(player_board)
+        coords = input("Введите координаты (например, A1): ")
+        try:
+            row, col = parse_coordinates(coords)
+            result = process_shot(board, player_board, row, col)
+            clear_screen()
+            display_board(player_board)
+            if result == "hit":
+                print("Попадание!")
+            elif result == "sunk":
+                print("Корабль потоплен!")
+            elif result == "miss":
+                print("Мимо!")
+            elif result == "victory":
+                print(f"Победа! Вы потопили все корабли за {shots + 1} выстрелов.")
+                leaderboard[player_name] = shots + 1
+                break
+            else:
+                print("Уже стреляли сюда!")
+            shots += 1
+        except (ValueError, IndexError):
+            print("Неверные координаты. Попробуйте ещё раз.")
 
-def OneShipPlacer():
-    firstRandom = random.randint(1, 49)
-    if(shipNotBlockChecker(firstRandom)):
-        dispatcher([firstRandom])
-    else:
-        OneShipPlacer()
+if __name__ == "__main__":
+    leaderboard = {}
+    while True:
+        clear_screen()
+        player_name = input("Введите ваше имя: ")
+        play_game(player_name, leaderboard)
+        if input("Сыграть ещё раз? (y/n): ").lower() != "y":
+            break
+    clear_screen()
+    print("Рейтинг игроков:")
+    for name, shots in sorted(leaderboard.items(), key=lambda x: x[1]):
+        print(f"{name}: {shots} выстрелов")
 
-ThreeShipsPlacer()
-TwoShipsPlacer()
-TwoShipsPlacer()
-OneShipPlacer()
-OneShipPlacer()
-OneShipPlacer()
-print(ships_coordinate)
